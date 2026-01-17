@@ -35,13 +35,41 @@ body {
     overflow: hidden;
 }
 
-/* App Container */
+/* Scaling Wrapper for Mobile */
 .app-container {
-    width: 100%;
-    max-width: 1024px;
+    width: 1024px;
+    /* Fixed width to maintain shape */
     height: 95vh;
     padding: 20px;
+    transform-origin: top center;
+    /* Scale from top center */
+    transition: transform 0.2s ease-out;
 }
+
+/* Ensure Settings Modal inside checks viewport independent of scale if needed,
+   but since we scale the body/container, it should be fine.
+   We might need to adjust modal positioning if it uses fixed positioning relative to viewport.
+   The current modal uses ::backdrop and default dialog behavior which is fixed to viewport.
+   Scaling the body might not scale the native dialog properly in some browsers?
+   Actually, applying transform to .app-container won't affect the <dialog> if it's top level?
+   In HTML structure, <dialog> is outside .app-container?
+   Let's check HTML.
+   Yes, <dialog> is a sibling of .app-container.
+
+   If we only scale .app-container, the modal will remain full size (huge on mobile compared to app?).
+   Or rather, the modal is responsive.
+
+   Actually, if the user wants the *whole* thing to look like the image,
+   we should probably scale the entire <body> or put everything in a wrapper.
+
+   Let's wrap the <dialog> inside a container if we want it scaled too?
+   Native <dialog> escapes overflow:hidden/transforms usually.
+
+   However, the user request specifically showed the main board.
+   I will focus on scaling the .app-container. The settings can remain responsive or I'll scale it too via JS if possible.
+   But keeping settings touch-friendly (large) is usually better.
+   Let's stick to scaling .app-container for now.
+*/
 
 .board {
     background: var(--board-bg);
@@ -684,46 +712,4 @@ body {
     filter: brightness(1.1);
 }
 
-/* Responsiveness update for settings */
-@media (max-width: 600px) {
-    .settings-row-top {
-        flex-wrap: wrap;
-    }
-}
-
-@media (max-width: 768px) {
-    .board {
-        grid-template-columns: 1fr;
-        height: auto;
-        overflow-y: auto;
-    }
-
-    .app-container {
-        height: auto;
-        overflow-y: visible;
-    }
-
-    .left-panel {
-        flex-direction: row;
-        gap: 15px;
-    }
-
-    .timer-card {
-        width: 50%;
-    }
-
-    .memo-card {
-        width: 50%;
-    }
-}
-
-@media (max-width: 480px) {
-    .left-panel {
-        flex-direction: column;
-    }
-
-    .timer-card,
-    .memo-card {
-        width: 100%;
-    }
-}
+/* Media queries removed to enforce fixed layout scaling */

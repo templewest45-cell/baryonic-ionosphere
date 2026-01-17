@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Schedule Board</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@400;700;800&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Main Board -->
+        <main class="board">
+            <!-- Left Column: Timer & Memo -->
+            <section class="left-panel">
+                <!-- 1. Timer Component -->
+                <div class="timer-card">
+                    <div class="timer-header">
+                        <span class="timer-label">Time</span>
+                        <button id="timer-settings-btn" class="icon-btn" aria-label="Settings">⚙️</button>
+                    </div>
+                    <div class="timer-display">
+                        <svg class="timer-svg" viewBox="0 0 100 100">
+                            <!-- Background Circle -->
+                            <circle class="timer-circle-bg" cx="50" cy="50" r="45"></circle>
+                            <!-- Progress Circle -->
+                            <circle id="timer-progress" class="timer-circle-fg" cx="50" cy="50" r="45"></circle>
+                            <!-- Time Text -->
+                            <text x="50" y="55" text-anchor="middle" class="timer-text" id="timer-text">00:00</text>
+                            <!-- Icon/Status -->
+                            <text x="50" y="75" text-anchor="middle" class="timer-icon">⏳</text>
+                        </svg>
+
+                        <!-- Time Up Overlay -->
+                        <div id="time-up-overlay" class="time-up-overlay" style="display: none;">
+                            <div class="time-up-message">🎉 おつかれさま！</div>
+                            <div class="time-up-actions" id="time-up-buttons">
+                                <button id="time-up-reset-btn" class="time-up-btn reset-c">リセット</button>
+                                <button id="time-up-extend-btn" class="time-up-btn extend-c">延長する</button>
+                            </div>
+                            <div class="time-up-extend-form" id="time-up-extend-form" style="display: none;">
+                                <input type="number" id="extend-minutes" value="10" min="1" max="60">
+                                <span class="unit">分</span>
+                                <button id="time-up-start-extension-btn" class="time-up-btn play-c">▶</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="timer-controls">
+                        <button id="start-btn" class="control-btn play">▶</button>
+                        <button id="reset-btn" class="control-btn reset">↻</button>
+                    </div>
+                </div>
+
+                <!-- 2. Memo Component -->
+                <div class="memo-card">
+                    <div class="memo-header">
+                        <span class="memo-title">MEMO</span>
+                        <span class="memo-subtitle">Everyday is good day!</span>
+                    </div>
+                    <textarea id="memo-area" placeholder="ここにメモを書いてね...
+例:
+Time: use it wisely!"></textarea>
+                </div>
+            </section>
+
+            <!-- Right Column: Task List -->
+            <section class="right-panel">
+                <div class="task-list-container">
+                    <!-- Task Items will be injected here by JS -->
+                    <div id="task-list" class="task-list"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Settings Modal -->
+    <dialog id="settings-modal" class="settings-modal">
+        <div class="settings-container">
+            <header class="settings-header">
+                <h2>⚙️ Settings</h2>
+                <button id="close-settings-btn" class="icon-btn close-btn">✕</button>
+            </header>
+
+            <div class="settings-body">
+                <!-- Timer Settings -->
+                <section class="settings-section">
+                    <h3>⏱ Timer Duration</h3>
+                    <div class="input-group">
+                        <label>Minutes:</label>
+                        <input type="number" id="setting-timer-min" value="35" min="1" max="120">
+                    </div>
+                </section>
+
+                <!-- Task Settings -->
+                <section class="settings-section">
+                    <h3>📝 Task List</h3>
+                    <div class="settings-task-list" id="settings-task-list">
+                        <!-- Task Rows will be injected here -->
+                    </div>
+                    <button id="setting-add-task-btn" class="add-task-btn small">+ Add Task</button>
+                </section>
+            </div>
+
+            <footer class="settings-footer">
+                <button id="save-settings-btn" class="primary-btn">Save Changes</button>
+            </footer>
+        </div>
+    </dialog>
+
+    <!-- Template for Settings Task Row -->
+    <template id="settings-task-row-template">
+        <div class="settings-task-row">
+            <div class="settings-row-top">
+                <input type="text" class="setting-time" placeholder="Time" value="00:00">
+
+                <!-- Icon Selector -->
+                <select class="setting-icon-select">
+                    <!-- Options injected by JS -->
+                </select>
+
+                <!-- Type Toggle -->
+                <select class="setting-type-select">
+                    <option value="text">Text</option>
+                    <option value="image">Image</option>
+                </select>
+
+                <button class="delete-btn" aria-label="Delete">🗑️</button>
+            </div>
+
+            <div class="settings-row-content">
+                <!-- Text Input -->
+                <input type="text" class="setting-text" placeholder="Task description">
+
+                <!-- Image Input (Hidden by default) -->
+                <div class="setting-image-container" style="display: none;">
+                    <input type="file" class="setting-image-input" accept="image/*">
+                    <div class="setting-image-preview"></div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <!-- Template for a Task Item -->
+    <template id="task-item-template">
+        <div class="task-item">
+            <div class="task-left">
+                <div class="task-number">1</div>
+                <div class="task-time">00:00</div>
+            </div>
+            <div class="task-content">
+                <div class="task-icon">📝</div>
+                <!-- Content will be injected here: Text Input or Image -->
+                <div class="task-payload"></div>
+            </div>
+            <div class="task-check-area">
+                <label class="toggle-switch">
+                    <input type="checkbox" class="task-checkbox">
+                    <div class="slider">
+                        <div class="slider-knob">✔</div>
+                    </div>
+                </label>
+            </div>
+        </div>
+    </template>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

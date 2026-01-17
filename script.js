@@ -1,693 +1,462 @@
-:root {
-    --bg-color: #f0f4f8;
-    --board-bg: #ffffff;
-    --primary-color: #3b82f6;
-    --accent-yellow: #facc15;
-    --accent-yellow-dark: #eab308;
-    --text-color: #334155;
-    --sub-text: #64748b;
-    --danger-color: #ef4444;
-    --font-stack: "M PLUS Rounded 1c", sans-serif;
+document.addEventListener('DOMContentLoaded', () => {
+    // --- Configuration ---
+    const iconOptions = [
+        '🥣', '🅰️', '✏️', '🔍', '🎹', '🌺', '🧹', '⭐',
+        '🏃', '🛀', '💤', '🎮', '📺', '🏫', '🐶', '🐱',
+        '🍔', '🎨', '🚲', '🎵', '🎒', '🌞', '📝', '🆕'
+    ];
 
-    --shadow-soft: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    --shadow-deep: 5px 5px 15px rgba(0, 0, 0, 0.1), -5px -5px 15px rgba(255, 255, 255, 0.8);
-    --shadow-inset: inset 2px 2px 5px rgba(0, 0, 0, 0.05), inset -2px -2px 5px rgba(255, 255, 255, 0.8);
+    // --- State ---
+    let tasks = loadTasks();
+    let timerDuration = parseInt(localStorage.getItem('timerDuration')) || 35; // Minutes
 
-    --radius-timer: 24px;
-    --radius-card: 20px;
-    --radius-btn: 12px;
-}
+    // --- DOM Elements ---
+    const appContainer = document.querySelector('.app-container');
+    const taskListElement = document.getElementById('task-list');
+    const taskTemplate = document.getElementById('task-item-template');
 
-* {
-    box-sizing: border-box;
-    margin: 0;
-    padding: 0;
-}
+    // Timer Elements
+    const timerText = document.getElementById('timer-text');
+    const timerProgress = document.getElementById('timer-progress');
+    const startBtn = document.getElementById('start-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const timerSettingsBtn = document.getElementById('timer-settings-btn');
 
-body {
-    font-family: var(--font-stack);
-    background-color: var(--bg-color);
-    color: var(--text-color);
-    height: 100vh;
-    display: flex;
-    justify-content: flex-start;
-    /* Changed from center to allow manual positioning */
-    align-items: flex-start;
-    overflow: hidden;
-}
+    // Time Up Overlay Elements
+    const timeUpOverlay = document.getElementById('time-up-overlay');
+    const timeUpButtons = document.getElementById('time-up-buttons');
+    const timeUpResetBtn = document.getElementById('time-up-reset-btn');
+    const timeUpExtendBtn = document.getElementById('time-up-extend-btn');
+    const timeUpExtendForm = document.getElementById('time-up-extend-form');
+    const timeUpExtendInput = document.getElementById('extend-minutes');
+    const startExtensionBtn = document.getElementById('time-up-start-extension-btn');
 
-/* Scaling Wrapper for Mobile */
-.app-container {
-    width: 1024px;
-    /* Fixed width to maintain shape */
-    /* Remove fixed height to allow content to flow if needed, but we want 95vh look */
-    min-height: 800px;
-    /* Ensure aspect ratio roughly */
-    padding: 20px;
-    transform-origin: top left;
-    /* Scale from top left so we can center it manually via margin or parent */
-    /* We will handle centering via JS calculating margin or a wrapper */
-}
+    // Settings Elements
+    const settingsModal = document.getElementById('settings-modal');
+    const closeSettingsBtn = document.getElementById('close-settings-btn');
+    const saveSettingsBtn = document.getElementById('save-settings-btn');
+    const resultTimerInput = document.getElementById('setting-timer-min');
+    const settingsTaskList = document.getElementById('settings-task-list');
+    const addSettingTaskBtn = document.getElementById('setting-add-task-btn');
+    const settingsTaskRowTemplate = document.getElementById('settings-task-row-template');
 
-.board {
-    background: var(--board-bg);
-    width: 100%;
-    height: 100%;
-    border-radius: 40px;
-    box-shadow:
-        0 20px 50px rgba(0, 0, 0, 0.1),
-        inset 0 0 0 8px #f8fafc;
-    padding: 30px;
-    display: grid;
-    grid-template-columns: 320px 1fr;
-    gap: 30px;
-    position: relative;
-}
-
-/* --- Left Panel --- */
-.left-panel {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    height: 100%;
-}
-
-/* Timer Card */
-.timer-card {
-    background: #f1f5f9;
-    border-radius: var(--radius-timer);
-    padding: 20px;
-    flex: 0 0 auto;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    box-shadow: var(--shadow-inset);
-    border: 1px solid #e2e8f0;
-}
-
-.timer-header {
-    width: 100%;
-    display: flex;
-    justify-content: space-between;
-    font-weight: 800;
-    font-size: 1.2rem;
-    color: var(--text-color);
-    margin-bottom: 10px;
-}
-
-.timer-display {
-    width: 200px;
-    height: 200px;
-    position: relative;
-    margin: 10px 0;
-}
-
-.timer-svg {
-    width: 100%;
-    height: 100%;
-    transform: rotate(-90deg);
-}
-
-.timer-circle-bg {
-    fill: none;
-    stroke: #e2e8f0;
-    stroke-width: 8;
-}
-
-.timer-circle-fg {
-    fill: none;
-    stroke: #1e293b;
-    stroke-width: 8;
-    stroke-linecap: round;
-    stroke-dasharray: 283;
-    stroke-dashoffset: 0;
-    transition: stroke-dashoffset 1s linear;
-}
-
-.timer-text {
-    font-size: 24px;
-    font-weight: 800;
-    fill: #1e293b;
-    transform: rotate(90deg);
-    transform-origin: 50px 50px;
-}
-
-.timer-icon {
-    font-size: 16px;
-    transform: rotate(90deg);
-    transform-origin: 50px 50px;
-}
-
-/* Time Up Overlay - New */
-.time-up-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.95);
-    border-radius: 50%;
-    /* Make it round to match the timer circle */
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    z-index: 10;
-    animation: fadeIn 0.3s ease-out;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: scale(0.9);
+    // --- Initialization ---
+    function init() {
+        renderMainTasks();
+        resetTimerSystem();
+        setupEventListeners();
+        handleResize(); // Initial scale
     }
 
-    to {
-        opacity: 1;
-        transform: scale(1);
+    // --- Auto Scaling Logic ---
+    function handleResize() {
+        const baseWidth = 1024; // Base content width
+        // We treat the container width as the target (roughly content + padding)
+        const targetWidth = 1064;
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+
+        // Calculate Scale
+        let scale = windowWidth / targetWidth;
+        if (scale > 1) scale = 1;
+
+        // Calculate Centering Offsets
+        // Measure estimated height or use bounded box if possible, 
+        // but for safety we can use the element height if rendered, or a safe fallback.
+        // appContainer.offsetHeight might be 0 if hidden or layout not ready, so we fallback.
+        const contentHeight = appContainer.offsetHeight || 800;
+
+        const scaledWidth = targetWidth * scale; // Approx used width
+        const scaledHeight = contentHeight * scale;
+
+        const leftOffset = (windowWidth - scaledWidth) / 2;
+        let topOffset = (windowHeight - scaledHeight) / 2;
+        if (topOffset < 0) topOffset = 0;
+
+        // Apply Transform
+        // Note: CSS must have 'transform-origin: top left' for this math to work easily.
+        appContainer.style.transformOrigin = 'top left';
+        appContainer.style.transform = `translate(${leftOffset}px, ${topOffset}px) scale(${scale})`;
+        appContainer.style.width = `${baseWidth}px`; // Ensure internal layout thinks it is wide
+
+        // Handle body overflow to prevent scrollbars if exact fit
+        if (scale < 1) {
+            document.body.style.height = '100vh';
+            document.body.style.overflow = 'hidden';
+        } else {
+            // Restore for desktop
+            document.body.style.height = 'auto';
+            document.body.style.overflow = 'auto';
+            // Also if scale is 1, maybe let it center naturally or keep translation?
+            // If we are desktop, topOffset might center it too which is nice.
+        }
     }
-}
-
-.time-up-message {
-    font-size: 1.2rem;
-    font-weight: 800;
-    color: #f59e0b;
-    margin-bottom: 15px;
-    white-space: nowrap;
-}
-
-.time-up-actions {
-    display: flex;
-    gap: 10px;
-}
-
-.time-up-btn {
-    border: none;
-    padding: 8px 12px;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-    font-size: 0.8rem;
-    transition: transform 0.1s;
-}
-
-.time-up-btn:active {
-    transform: scale(0.95);
-}
-
-.reset-c {
-    background-color: #cbd5e1;
-    color: #334155;
-}
-
-.extend-c {
-    background-color: #facc15;
-    color: #713f12;
-}
-
-.play-c {
-    background-color: #3b82f6;
-    color: white;
-    padding: 8px 14px;
-}
-
-.time-up-extend-form {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.time-up-extend-form input {
-    width: 50px;
-    padding: 6px;
-    border-radius: 6px;
-    border: 1px solid #cbd5e1;
-    text-align: center;
-    font-weight: bold;
-}
-
-.time-up-extend-form .unit {
-    font-size: 0.8rem;
-    color: #64748b;
-    font-weight: bold;
-}
-
-
-.timer-controls {
-    display: flex;
-    gap: 15px;
-    margin-top: 10px;
-}
-
-.control-btn {
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    transition: transform 0.1s;
-    background: white;
-}
-
-.control-btn:active {
-    transform: scale(0.95);
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.control-btn.play {
-    color: #10b981;
-}
-
-.control-btn.reset {
-    color: #f59e0b;
-}
-
-/* Memo Card */
-.memo-card {
-    flex: 1;
-    background: #fff;
-    border-radius: var(--radius-card);
-    border: 4px solid #f1f5f9;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05);
-}
-
-.memo-header {
-    margin-bottom: 10px;
-}
-
-.memo-title {
-    display: block;
-    font-weight: 800;
-    color: #f59e0b;
-    text-transform: uppercase;
-    font-size: 0.9rem;
-}
-
-.memo-subtitle {
-    font-size: 0.8rem;
-    color: var(--sub-text);
-}
-
-#memo-area {
-    width: 100%;
-    height: 100%;
-    border: none;
-    resize: none;
-    outline: none;
-    color: #334155;
-    font-size: 1.1rem;
-    line-height: 1.6;
-    background: transparent;
-    font-family: var(--font-stack);
-}
-
-/* --- Right Panel --- */
-.right-panel {
-    background: #f8fafc;
-    border-radius: var(--radius-card);
-    padding: 20px;
-    box-shadow: var(--shadow-inset);
-    overflow-y: auto;
-    border: 1px solid #e2e8f0;
-}
-
-.right-panel::-webkit-scrollbar {
-    width: 8px;
-}
-
-.right-panel::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.right-panel::-webkit-scrollbar-thumb {
-    background-color: #cbd5e1;
-    border-radius: 4px;
-}
-
-.task-list {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-.task-item {
-    display: flex;
-    align-items: center;
-    background: white;
-    padding: 15px;
-    border-radius: 16px;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-    border-bottom: 2px solid transparent;
-    transition: all 0.2s ease;
-}
-
-.task-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 12px rgba(0, 0, 0, 0.05);
-}
-
-/* Task Left: Number & Time */
-.task-left {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-right: 15px;
-    min-width: 60px;
-}
-
-.task-number {
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: #94a3b8;
-    -webkit-text-stroke: 1px #cbd5e1;
-    color: transparent;
-}
-
-.task-time {
-    font-size: 0.8rem;
-    font-weight: bold;
-    color: var(--sub-text);
-    margin-top: 4px;
-    white-space: nowrap;
-}
-
-/* Task Content: Icon & Input/Image */
-.task-content {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    background: #f1f5f9;
-    padding: 8px 12px;
-    border-radius: 12px;
-    margin-right: 15px;
-}
-
-.task-icon {
-    font-size: 1.5rem;
-}
-
-.task-payload {
-    flex: 1;
-    width: 100%;
-}
-
-.task-input {
-    border: none;
-    background: transparent;
-    font-size: 1rem;
-    font-weight: bold;
-    color: var(--text-color);
-    width: 100%;
-    outline: none;
-    font-family: var(--font-stack);
-}
-
-.task-image {
-    max-height: 50px;
-    width: auto;
-    border-radius: 8px;
-    border: 2px solid white;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    object-fit: contain;
-    display: block;
-}
-
-/* Task Checker: Toggle Switch */
-.task-check-area {
-    width: 60px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.toggle-switch {
-    display: block;
-    width: 50px;
-    height: 30px;
-    background: #e2e8f0;
-    border-radius: 20px;
-    position: relative;
-    cursor: pointer;
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
-    transition: background 0.3s;
-}
-
-.task-checkbox {
-    display: none;
-}
-
-.slider {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    width: 26px;
-    height: 26px;
-    background: #fff;
-    border-radius: 50%;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.slider-knob {
-    font-size: 14px;
-    color: #cbd5e1;
-    font-weight: bold;
-    user-select: none;
-}
-
-/* Checked State */
-.task-checkbox:checked+.slider {
-    transform: translateX(20px);
-    background: var(--accent-yellow);
-}
-
-.toggle-switch:has(.task-checkbox:checked) {
-    background: #fde047;
-}
-
-.task-checkbox:checked+.slider .slider-knob {
-    color: #b45309;
-}
-
-/* Button Styles */
-.add-task-btn {
-    width: 100%;
-    padding: 12px;
-    margin-top: 15px;
-    background: white;
-    border: 2px dashed #cbd5e1;
-    border-radius: 12px;
-    color: #64748b;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.add-task-btn:hover {
-    border-color: var(--primary-color);
-    color: var(--primary-color);
-    background: #eff6ff;
-}
-
-.add-task-btn.small {
-    padding: 8px;
-    font-size: 0.9rem;
-}
-
-/* --- Settings Modal --- */
-.settings-modal {
-    border: none;
-    border-radius: 24px;
-    padding: 0;
-    background: transparent;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-}
-
-.settings-modal::backdrop {
-    background: rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(4px);
-}
-
-.settings-container {
-    background: #fff;
-    width: 90vw;
-    max-width: 600px;
-    border-radius: 24px;
-    display: flex;
-    flex-direction: column;
-    max-height: 85vh;
-}
-
-.settings-header {
-    background: #f8fafc;
-    padding: 20px;
-    border-bottom: 1px solid #e2e8f0;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    border-top-left-radius: 24px;
-    border-top-right-radius: 24px;
-}
-
-.settings-body {
-    padding: 20px;
-    overflow-y: auto;
-    flex: 1;
-}
-
-.settings-section {
-    margin-bottom: 25px;
-}
-
-.settings-section h3 {
-    margin-bottom: 15px;
-    color: var(--text-color);
-}
-
-.input-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: bold;
-}
-
-.input-group input[type="number"] {
-    padding: 8px;
-    border-radius: 8px;
-    border: 1px solid #cbd5e1;
-    width: 80px;
-    font-size: 1rem;
-}
-
-.settings-task-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-/* Setting Task Row - Updated */
-.settings-task-row {
-    background: #f1f5f9;
-    padding: 10px;
-    border-radius: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.settings-row-top {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-.settings-row-content {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.settings-task-row input[type="text"] {
-    padding: 8px;
-    border-radius: 8px;
-    border: 1px solid #cbd5e1;
-    font-family: var(--font-stack);
-}
-
-.setting-time {
-    width: 100px;
-}
-
-.setting-icon-select {
-    padding: 8px;
-    border-radius: 8px;
-    border: 1px solid #cbd5e1;
-    background: white;
-    font-size: 1.2rem;
-    cursor: pointer;
-}
-
-.setting-type-select {
-    padding: 8px;
-    border-radius: 8px;
-    border: 1px solid #cbd5e1;
-    background: white;
-    cursor: pointer;
-}
-
-.setting-text {
-    width: 100%;
-}
-
-.setting-image-container {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.setting-image-preview {
-    width: 40px;
-    height: 40px;
-    border-radius: 4px;
-    background-size: cover;
-    background-position: center;
-    border: 1px solid #cbd5e1;
-    background-color: #e2e8f0;
-}
-
-.delete-btn {
-    background: #fee2e2;
-    border: none;
-    border-radius: 8px;
-    width: 36px;
-    height: 36px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1rem;
-    margin-left: auto;
-}
-
-.delete-btn:hover {
-    background: #fecaca;
-}
-
-.settings-footer {
-    padding: 20px;
-    border-top: 1px solid #e2e8f0;
-    display: flex;
-    justify-content: flex-end;
-    border-bottom-left-radius: 24px;
-    border-bottom-right-radius: 24px;
-    background: #f8fafc;
-}
-
-.primary-btn {
-    background: var(--primary-color);
-    color: white;
-    border: none;
-    padding: 12px 24px;
-    border-radius: 12px;
-    font-weight: bold;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: background 0.2s;
-}
-
-.primary-btn:hover {
-    filter: brightness(1.1);
-}
-
-/* Media queries removed to enforce fixed layout scaling */
+    window.addEventListener('resize', handleResize);
+
+
+    function setupEventListeners() {
+        // Modal toggles
+        timerSettingsBtn.addEventListener('click', openSettings);
+        closeSettingsBtn.addEventListener('click', () => settingsModal.close());
+
+        // Close modal when clicking outside
+        settingsModal.addEventListener('click', (e) => {
+            if (e.target === settingsModal) settingsModal.close();
+        });
+
+        // Settings actions
+        addSettingTaskBtn.addEventListener('click', () => addSettingsTaskRow());
+        saveSettingsBtn.addEventListener('click', saveSettings);
+
+        // Time Up Actions
+        timeUpResetBtn.addEventListener('click', () => {
+            hideTimeUp();
+            resetTimerSystem();
+        });
+
+        timeUpExtendBtn.addEventListener('click', () => {
+            timeUpButtons.style.display = 'none';
+            timeUpExtendForm.style.display = 'flex';
+        });
+
+        startExtensionBtn.addEventListener('click', () => {
+            const extMins = parseInt(timeUpExtendInput.value);
+            if (extMins > 0) {
+                hideTimeUp();
+                // Start with new duration
+                maxTime = extMins * 60;
+                timeLeft = maxTime;
+                updateDisplay(timeLeft);
+                startTimer();
+            }
+        });
+    }
+
+    // --- Loading & Saving Data ---
+    function loadTasks() {
+        const stored = localStorage.getItem('scheduleTasks');
+        if (stored) return JSON.parse(stored);
+        return [
+            { id: 1, time: '7:30~8:15', icon: '🥣', text: '起床、身だしなみ、朝ごはん', done: true, type: 'text' },
+            { id: 2, time: '8:35~9:20', icon: '🅰️', text: '外遊び', done: false, type: 'text' },
+            { id: 3, time: '9:40~10:25', icon: '✏️', text: '宿題、読書、工作', done: false, type: 'text' },
+            { id: 4, time: '10:45~12:00', icon: '🔍', text: '家の手伝い', done: false, type: 'text' },
+            { id: 5, time: '14:00~15:30', icon: '🎹', text: '楽器の練習', done: false, type: 'text' },
+            { id: 6, time: '15:30~17:30', icon: '🌺', text: '家族の時間', done: false, type: 'text' },
+            { id: 7, time: '17:30~19:00', icon: '🧹', text: '運動・休憩', done: false, type: 'text' },
+            { id: 8, time: '20:00~21:00', icon: '⭐', text: '明日の準備', done: false, type: 'text' },
+        ];
+    }
+
+    function saveTasks() {
+        localStorage.setItem('scheduleTasks', JSON.stringify(tasks));
+    }
+
+    function createEmptyTask() {
+        return {
+            id: Date.now(),
+            time: '00:00',
+            icon: '🆕',
+            text: '新しいタスク',
+            done: false,
+            type: 'text', // 'text' or 'image'
+            imageSrc: ''
+        };
+    }
+
+    // --- Main View Logic ---
+    function renderMainTasks() {
+        taskListElement.innerHTML = '';
+        tasks.forEach((task, index) => {
+            const clone = taskTemplate.content.cloneNode(true);
+
+            // Populate Data
+            clone.querySelector('.task-number').textContent = index + 1;
+            clone.querySelector('.task-number').style.webkitTextStroke = `1px ${getRandomColor(index)}`;
+            clone.querySelector('.task-time').textContent = task.time;
+            clone.querySelector('.task-icon').textContent = task.icon;
+
+            const payloadContainer = clone.querySelector('.task-payload');
+
+            if (task.type === 'image' && task.imageSrc) {
+                // Image Mode
+                const img = document.createElement('img');
+                img.src = task.imageSrc;
+                img.alt = task.text || 'Task Image';
+                img.className = 'task-image';
+                payloadContainer.appendChild(img);
+            } else {
+                // Text Mode
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'task-input';
+                input.value = task.text || '';
+                // Since this is the main view, allowing edit here updates text mode only
+                input.addEventListener('change', (e) => {
+                    task.text = e.target.value;
+                    saveTasks();
+                });
+                payloadContainer.appendChild(input);
+            }
+
+            const checkbox = clone.querySelector('.task-checkbox');
+            checkbox.checked = task.done;
+            checkbox.addEventListener('change', (e) => {
+                task.done = e.target.checked;
+                if (e.target.checked) playSound('success');
+                saveTasks();
+            });
+
+            taskListElement.appendChild(clone);
+        });
+    }
+
+    function getRandomColor(index) {
+        const colors = ['#f87171', '#fb923c', '#fbbf24', '#a3e635', '#34d399', '#22d3ee', '#818cf8', '#c084fc'];
+        return colors[index % colors.length];
+    }
+
+    // --- Settings Logic ---
+    function openSettings() {
+        // Load current state into settings
+        resultTimerInput.value = timerDuration;
+
+        // Render tasks in settings
+        settingsTaskList.innerHTML = '';
+        tasks.forEach(task => addSettingsTaskRow(task));
+
+        settingsModal.showModal();
+    }
+
+    function addSettingsTaskRow(task = null) {
+        const isNew = !task;
+        if (isNew) task = createEmptyTask();
+
+        const clone = settingsTaskRowTemplate.content.cloneNode(true);
+        const row = clone.querySelector('.settings-task-row');
+
+        // Elements
+        const timeInput = row.querySelector('.setting-time');
+        const iconSelect = row.querySelector('.setting-icon-select'); // Changed from input to select
+        const typeSelect = row.querySelector('.setting-type-select');
+        const textInput = row.querySelector('.setting-text');
+        const imageContainer = row.querySelector('.setting-image-container');
+        const imageInput = row.querySelector('.setting-image-input');
+        const imagePreview = row.querySelector('.setting-image-preview');
+        const delBtn = row.querySelector('.delete-btn');
+
+        // Populate Icon Options
+        iconOptions.forEach(icon => {
+            const option = document.createElement('option');
+            option.value = icon;
+            option.textContent = icon;
+            iconSelect.appendChild(option);
+        });
+
+        // Initial Values
+        timeInput.value = task.time;
+        iconSelect.value = task.icon; // Select matches value
+        if (!iconOptions.includes(task.icon)) {
+            // If the current icon isn't in our list (e.g. from previous free-text), add it temporarily
+            const option = document.createElement('option');
+            option.value = task.icon;
+            option.textContent = task.icon;
+            iconSelect.appendChild(option);
+            iconSelect.value = task.icon;
+        }
+
+        typeSelect.value = task.type || 'text';
+        textInput.value = task.text || '';
+
+        // Store state on the DOM element for saving later
+        row.dataset.imageSrc = task.imageSrc || '';
+
+        if (task.imageSrc) {
+            imagePreview.style.backgroundImage = `url(${task.imageSrc})`;
+        }
+
+        // Visibility Toggle Function
+        const updateVisibility = () => {
+            if (typeSelect.value === 'text') {
+                textInput.style.display = 'block';
+                imageContainer.style.display = 'none';
+            } else {
+                textInput.style.display = 'none';
+                imageContainer.style.display = 'flex';
+            }
+        };
+        updateVisibility();
+
+        // Event Listeners
+        typeSelect.addEventListener('change', updateVisibility);
+
+        // Image Upload Handler
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function (evt) {
+                    const base64 = evt.target.result;
+                    row.dataset.imageSrc = base64;
+                    imagePreview.style.backgroundImage = `url(${base64})`;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        delBtn.addEventListener('click', () => {
+            row.remove();
+        });
+
+        settingsTaskList.appendChild(row);
+    }
+
+    function saveSettings() {
+        // Update Timer
+        const newDuration = parseInt(resultTimerInput.value);
+        if (newDuration > 0 && newDuration !== timerDuration) {
+            timerDuration = newDuration;
+            localStorage.setItem('timerDuration', timerDuration);
+            resetTimerSystem();
+        }
+
+        // Update Tasks
+        const newTasks = [];
+        const rows = settingsTaskList.querySelectorAll('.settings-task-row');
+        rows.forEach((row, index) => {
+            const existingTask = tasks[index] || {};
+
+            // Reconstruct task object
+            newTasks.push({
+                id: existingTask.id || Date.now() + index,
+                time: row.querySelector('.setting-time').value,
+                icon: row.querySelector('.setting-icon-select').value, // Get from select
+                type: row.querySelector('.setting-type-select').value,
+                text: row.querySelector('.setting-text').value,
+                imageSrc: row.dataset.imageSrc,
+                done: existingTask.done || false
+            });
+        });
+
+        tasks = newTasks;
+        saveTasks();
+        renderMainTasks();
+        settingsModal.close();
+    }
+
+    // --- Timer System ---
+    let timerInterval;
+    let timeLeft;
+    let maxTime; // in seconds
+    let isRunning = false;
+
+    // SVG Circumference
+    const circumference = 2 * Math.PI * 45;
+
+    function resetTimerSystem() {
+        pauseTimer();
+        hideTimeUp();
+        maxTime = timerDuration * 60;
+        timeLeft = maxTime;
+
+        // Reset SVG
+        timerProgress.style.strokeDasharray = `${circumference} ${circumference}`;
+        timerProgress.style.strokeDashoffset = 0; // Full circle
+
+        updateDisplay(timeLeft);
+    }
+
+    function showTimeUp() {
+        timeUpOverlay.style.display = 'flex';
+        timeUpButtons.style.display = 'flex';
+        timeUpExtendForm.style.display = 'none';
+    }
+
+    function hideTimeUp() {
+        timeUpOverlay.style.display = 'none';
+        timeUpButtons.style.display = 'flex';
+        timeUpExtendForm.style.display = 'none';
+    }
+
+    function updateDisplay(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        timerText.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+        // Update Circle
+        // Note: strokeDashoffset=0 is full, =circumference is empty
+        const offset = circumference - (seconds / maxTime) * circumference;
+        timerProgress.style.strokeDashoffset = offset;
+    }
+
+    function startTimer() {
+        if (isRunning) return;
+        isRunning = true;
+        startBtn.textContent = '⏸';
+        hideTimeUp(); // Ensure overlay is hidden if restarting
+
+        timerInterval = setInterval(() => {
+            if (timeLeft > 0) {
+                timeLeft--;
+                updateDisplay(timeLeft);
+            } else {
+                clearInterval(timerInterval);
+                isRunning = false;
+                startBtn.textContent = '▶';
+                playSound('alarm');
+                showTimeUp(); // Trigger overlay
+            }
+        }, 1000);
+    }
+
+    function pauseTimer() {
+        clearInterval(timerInterval);
+        isRunning = false;
+        startBtn.textContent = '▶';
+    }
+
+    startBtn.addEventListener('click', () => {
+        if (isRunning) {
+            pauseTimer();
+        } else {
+            startTimer();
+        }
+    });
+
+    resetBtn.addEventListener('click', resetTimerSystem);
+
+    // --- Memo Autosave ---
+    const memoArea = document.getElementById('memo-area');
+    memoArea.value = localStorage.getItem('memoContent') || '';
+    memoArea.addEventListener('input', (e) => {
+        localStorage.setItem('memoContent', e.target.value);
+    });
+
+    // --- Helpers ---
+    function playSound(type) {
+        if (type === 'alarm') {
+            // Simple Bell Sound using Oscillator
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+            osc.frequency.exponentialRampToValueAtTime(1046.5, ctx.currentTime + 0.1); // Octave up chirp
+
+            gain.gain.setValueAtTime(0.5, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.5);
+
+            osc.start();
+            osc.stop(ctx.currentTime + 1.5);
+        } else {
+            // Keep success click silent or small beep if needed, skipping for now
+        }
+    }
+
+    // Start
+    init();
+});

@@ -50,46 +50,44 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Auto Scaling Logic ---
     function handleResize() {
-        const baseWidth = 1024; // Base content width
-        // We treat the container width as the target (roughly content + padding)
-        const targetWidth = 1064;
-        const windowWidth = window.innerWidth;
+        if (!appContainer) return;
+
+        const baseWidth = 1024;
+        const padding = 20; // Margin from screen edge
+
+        // Available space
+        const windowWidth = document.documentElement.clientWidth || window.innerWidth;
         const windowHeight = window.innerHeight;
 
-        // Calculate Scale
-        let scale = windowWidth / targetWidth;
+        // Element Dimensions
+        // Use offsetHeight to capture the full rendered height of the board
+        const contentHeight = appContainer.offsetHeight;
+
+        // Calculate Scale Factors
+        // We want (baseWidth * scale) <= (windowWidth - padding*2)
+        const scaleX = (windowWidth - (padding * 2)) / baseWidth;
+        const scaleY = (windowHeight - (padding * 2)) / contentHeight;
+
+        // Fit Contain: Use smallest scale to ensure it fits BOTH dimensions
+        let scale = Math.min(scaleX, scaleY);
+
+        // Cap at 1.0 (Desktop)
         if (scale > 1) scale = 1;
 
-        // Calculate Centering Offsets
-        // Measure estimated height or use bounded box if possible, 
-        // but for safety we can use the element height if rendered, or a safe fallback.
-        // appContainer.offsetHeight might be 0 if hidden or layout not ready, so we fallback.
-        const contentHeight = appContainer.offsetHeight || 800;
+        // Apply Centering Transform
+        // We strict use translate(-50%, -50%) to keep it centered
+        // combined with scale.
+        // CSS has 'transform-origin: center center' so scaling happens in place.
+        appContainer.style.transform = `translate(-50%, -50%) scale(${scale})`;
 
-        const scaledWidth = targetWidth * scale; // Approx used width
-        const scaledHeight = contentHeight * scale;
+        // Ensure body doesn't scroll if we are fully contained
+        document.body.style.height = '100vh';
+        document.body.style.overflow = 'hidden';
+        document.body.style.width = '100vw';
 
-        const leftOffset = (windowWidth - scaledWidth) / 2;
-        let topOffset = (windowHeight - scaledHeight) / 2;
-        if (topOffset < 0) topOffset = 0;
-
-        // Apply Transform
-        // Note: CSS must have 'transform-origin: top left' for this math to work easily.
-        appContainer.style.transformOrigin = 'top left';
-        appContainer.style.transform = `translate(${leftOffset}px, ${topOffset}px) scale(${scale})`;
-        appContainer.style.width = `${baseWidth}px`; // Ensure internal layout thinks it is wide
-
-        // Handle body overflow to prevent scrollbars if exact fit
-        if (scale < 1) {
-            document.body.style.height = '100vh';
-            document.body.style.overflow = 'hidden';
-        } else {
-            // Restore for desktop
-            document.body.style.height = 'auto';
-            document.body.style.overflow = 'auto';
-            // Also if scale is 1, maybe let it center naturally or keep translation?
-            // If we are desktop, topOffset might center it too which is nice.
-        }
+        // Reset specific desktop overrides if coming back from desktop
+        document.body.style.justifyContent = '';
+        document.body.style.alignItems = '';
     }
     window.addEventListener('resize', handleResize);
 

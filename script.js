@@ -53,41 +53,35 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!appContainer) return;
 
         const baseWidth = 1024;
-        const padding = 20; // Margin from screen edge
+        const padding = 20;
 
-        // Available space
         const windowWidth = document.documentElement.clientWidth || window.innerWidth;
-        const windowHeight = window.innerHeight;
+        // We only care about width scaling to fit mobile screens. 
+        // Height scrolling is acceptable/expected on mobile for long lists.
 
-        // Element Dimensions
-        // Use offsetHeight to capture the full rendered height of the board
-        const contentHeight = appContainer.offsetHeight;
-
-        // Calculate Scale Factors
-        // We want (baseWidth * scale) <= (windowWidth - padding*2)
-        const scaleX = (windowWidth - (padding * 2)) / baseWidth;
-        const scaleY = (windowHeight - (padding * 2)) / contentHeight;
-
-        // Fit Contain: Use smallest scale to ensure it fits BOTH dimensions
-        let scale = Math.min(scaleX, scaleY);
+        // Calculate Scale
+        const availableWidth = windowWidth - (padding * 2);
+        let scale = availableWidth / baseWidth;
 
         // Cap at 1.0 (Desktop)
         if (scale > 1) scale = 1;
 
-        // Apply Centering Transform
-        // We strict use translate(-50%, -50%) to keep it centered
-        // combined with scale.
-        // CSS has 'transform-origin: center center' so scaling happens in place.
-        appContainer.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        // Apply Scale
+        // CSS handles centering via margin: auto and transform-origin: top center
+        appContainer.style.transform = `scale(${scale})`;
 
-        // Ensure body doesn't scroll if we are fully contained
-        document.body.style.height = '100vh';
-        document.body.style.overflow = 'hidden';
-        document.body.style.width = '100vw';
-
-        // Reset specific desktop overrides if coming back from desktop
-        document.body.style.justifyContent = '';
-        document.body.style.alignItems = '';
+        // Adjust height of body/container if scaled to avoid massive whitespace at bottom
+        // (optional, but good for UX)
+        if (scale < 1) {
+            // When scaled down, the visual height is much smaller than the layout height.
+            // We can adjust negative margin-bottom to pull footer up? 
+            // Or just let it be. Simpler is better for stability.
+            appContainer.style.height = 'auto';
+            document.body.style.width = '100%';
+            document.body.style.overflowX = 'hidden';
+        } else {
+            document.body.style.overflowX = 'hidden';
+        }
     }
     window.addEventListener('resize', handleResize);
 

@@ -28,25 +28,31 @@ body {
     font-family: var(--font-stack);
     background-color: var(--bg-color);
     color: var(--text-color);
-    height: 100vh;
+    min-height: 100vh;
     display: flex;
-    justify-content: flex-start;
-    /* Changed from center to allow manual positioning */
+    justify-content: center;
+    /* Horizontally center */
     align-items: flex-start;
-    overflow: hidden;
+    /* Start from top */
+    overflow-x: hidden;
+    /* Prevent horizontal scroll */
+    overflow-y: auto;
+    /* Allow vertical scroll */
 }
 
 /* Scaling Wrapper for Mobile */
 .app-container {
     width: 1024px;
-    /* Fixed width to maintain shape */
-    /* Remove fixed height to allow content to flow if needed, but we want 95vh look */
-    min-height: 800px;
-    /* Ensure aspect ratio roughly */
-    padding: 20px;
-    transform-origin: top left;
-    /* Scale from top left so we can center it manually via margin or parent */
-    /* We will handle centering via JS calculating margin or a wrapper */
+    /* Fixed Base Width */
+    position: relative;
+    margin: 40px auto;
+    /* Top margin + Horizontal centering */
+    box-sizing: border-box;
+    flex-shrink: 0;
+
+    /* Prepare for scaling */
+    transform-origin: top center;
+    /* JS will apply scale() if window < 1024 */
 }
 
 .board {

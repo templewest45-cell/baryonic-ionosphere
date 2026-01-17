@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let timerDuration = parseInt(localStorage.getItem('timerDuration')) || 35; // Minutes
 
     // --- DOM Elements ---
+    const appContainer = document.querySelector('.app-container');
     const taskListElement = document.getElementById('task-list');
     const taskTemplate = document.getElementById('task-item-template');
 
@@ -44,7 +45,42 @@ document.addEventListener('DOMContentLoaded', () => {
         renderMainTasks();
         resetTimerSystem();
         setupEventListeners();
+        handleResize(); // Initial scale
     }
+
+    // --- Auto Scaling Logic ---
+    function handleResize() {
+        // Base width hardcoded in CSS is 1024px plus padding = approx 1064px?
+        // Let's assume content width is 1024px.
+        const baseWidth = 1024;
+        const windowWidth = window.innerWidth;
+        const windowHeight = window.innerHeight;
+
+        // Add some safe margin
+        const scaleX = windowWidth / (baseWidth + 40);
+        // Optional: fit height too? usually width is the constraint for mobile
+
+        let scale = scaleX;
+        if (scale > 1) scale = 1; // Don't scale up on huge screens, just stick to max-width logic or let it center
+
+        // Apply Scale
+        // We use transform scale. 
+        // We strictly adhere to "shrink to fit" if screen is smaller.
+        if (windowWidth < (baseWidth + 40)) {
+            appContainer.style.transform = `scale(${scale})`;
+            appContainer.style.width = `${baseWidth}px`; // Enforce fixed width for layout
+            // Adjust body height or container margin to avoid whitespace issues if needed
+            // But usually just scaling is enough for viewing.
+
+            // To Center horizontally if needed, but transform-origin is top center
+        } else {
+            appContainer.style.transform = 'none';
+            appContainer.style.width = '100%';
+            appContainer.style.maxWidth = '1024px';
+        }
+    }
+    window.addEventListener('resize', handleResize);
+
 
     function setupEventListeners() {
         // Modal toggles

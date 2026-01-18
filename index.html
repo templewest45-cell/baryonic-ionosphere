@@ -14,68 +14,79 @@
 </head>
 
 <body>
-    <div class="app-container">
-        <!-- Main Board -->
-        <main class="board">
-            <!-- Left Column: Timer & Memo -->
-            <section class="left-panel">
-                <!-- 1. Timer Component -->
-                <div class="timer-card">
-                    <div class="timer-header">
-                        <span class="timer-label">Time</span>
-                        <button id="timer-settings-btn" class="icon-btn" aria-label="Settings">⚙️</button>
-                    </div>
-                    <div class="timer-display">
-                        <svg class="timer-svg" viewBox="0 0 100 100">
-                            <!-- Background Circle -->
-                            <circle class="timer-circle-bg" cx="50" cy="50" r="45"></circle>
-                            <!-- Progress Circle -->
-                            <circle id="timer-progress" class="timer-circle-fg" cx="50" cy="50" r="45"></circle>
-                            <!-- Time Text -->
-                            <text x="50" y="55" text-anchor="middle" class="timer-text" id="timer-text">00:00</text>
-                            <!-- Icon/Status -->
-                            <text x="50" y="75" text-anchor="middle" class="timer-icon">⏳</text>
-                        </svg>
+    <!-- Settings Button (Fixed to Viewport) -->
+    <button id="timer-settings-btn" class="settings-btn" aria-label="Settings">
+        ⚙️
+    </button>
 
-                        <!-- Time Up Overlay -->
-                        <div id="time-up-overlay" class="time-up-overlay" style="display: none;">
-                            <div class="time-up-message">🎉 おつかれさま！</div>
-                            <div class="time-up-actions" id="time-up-buttons">
-                                <button id="time-up-reset-btn" class="time-up-btn reset-c">リセット</button>
-                                <button id="time-up-extend-btn" class="time-up-btn extend-c">延長する</button>
-                            </div>
-                            <div class="time-up-extend-form" id="time-up-extend-form" style="display: none;">
-                                <input type="number" id="extend-minutes" value="10" min="1" max="60">
-                                <span class="unit">分</span>
-                                <button id="time-up-start-extension-btn" class="time-up-btn play-c">▶</button>
-                            </div>
+    <div class="app-container">
+
+        <!-- Left Column: Timer & Memo -->
+        <section class="left-panel">
+            <!-- 1. Timer Component -->
+            <div class="timer-card">
+                <div class="timer-header">
+                    <span class="timer-label">Time</span>
+                    <!-- Old button location removed -->
+                </div>
+                <div class="timer-display">
+                    <svg class="timer-svg" viewBox="0 0 100 100">
+                        <!-- Background Circle -->
+                        <circle class="timer-circle-bg" cx="50" cy="50" r="45"></circle>
+                        <!-- Progress Circle -->
+                        <circle id="timer-progress" class="timer-circle-fg" cx="50" cy="50" r="45"></circle>
+                        <!-- Time Text -->
+                        <text x="50" y="55" text-anchor="middle" class="timer-text" id="timer-text">00:00</text>
+                        <!-- Icon/Status -->
+                        <text x="50" y="75" text-anchor="middle" class="timer-icon">⏳</text>
+                    </svg>
+
+                    <!-- Time Up Overlay -->
+                    <div id="time-up-overlay" class="time-up-overlay" style="display: none;">
+                        <div class="time-up-message">🎉 おつかれさま！</div>
+                        <div class="time-up-actions" id="time-up-buttons">
+                            <button id="time-up-reset-btn" class="time-up-btn reset-c">リセット</button>
+                            <button id="time-up-extend-btn" class="time-up-btn extend-c">延長する</button>
+                        </div>
+                        <div class="time-up-extend-form" id="time-up-extend-form" style="display: none;">
+                            <input type="number" id="extend-minutes" value="10" min="1" max="60">
+                            <span class="unit">分</span>
+                            <button id="time-up-start-extension-btn" class="time-up-btn play-c">▶</button>
                         </div>
                     </div>
-                    <div class="timer-controls">
-                        <button id="start-btn" class="control-btn play">▶</button>
-                        <button id="reset-btn" class="control-btn reset">↻</button>
-                    </div>
                 </div>
+                <div class="timer-controls">
+                    <button id="start-btn" class="control-btn play">▶</button>
+                    <button id="reset-btn" class="control-btn reset">↻</button>
+                </div>
+            </div>
 
-                <!-- 2. Memo Component -->
-                <div class="memo-card">
-                    <div class="memo-header">
-                        <span class="memo-title">MEMO</span>
-                        <span class="memo-subtitle">Everyday is good day!</span>
-                    </div>
-                    <textarea id="memo-area" placeholder="ここにメモを書いてね...
+            <!-- 2. Memo Component -->
+            <div class="memo-card">
+                <div class="memo-header">
+                    <span class="memo-title">MEMO</span>
+                    <span class="memo-subtitle">Everyday is good day!</span>
+                </div>
+                <textarea id="memo-area" placeholder="ここにメモを書いてね...
 例:
 Time: use it wisely!"></textarea>
-                </div>
-            </section>
+            </div>
+        </section>
 
-            <!-- Right Column: Task List -->
-            <section class="right-panel">
-                <div class="task-list-container">
-                    <!-- Task Items will be injected here by JS -->
-                    <div id="task-list" class="task-list"></div>
+        <!-- Right Column: Task List -->
+        <section class="right-panel" style="position: relative;">
+            <!-- Task Complete Overlay -->
+            <div id="task-complete-overlay" class="task-complete-overlay" style="display: none;">
+                <div class="task-complete-content">
+                    <div class="completion-message">🎉 おつかれさまでした！</div>
+                    <button id="task-reset-btn" class="task-reset-btn">リセット</button>
                 </div>
-            </section>
+            </div>
+
+            <div class="task-list" id="main-task-list">
+                <!-- Tasks will be injected here -->
+            </div>
+        </section>
         </main>
     </div>
 
@@ -89,13 +100,33 @@ Time: use it wisely!"></textarea>
 
             <div class="settings-body">
                 <!-- Timer Settings -->
-                <section class="settings-section">
-                    <h3>⏱ Timer Duration</h3>
-                    <div class="input-group">
-                        <label>Minutes:</label>
-                        <input type="number" id="setting-timer-min" value="35" min="1" max="120">
+                <div class="settings-section">
+                    <h3>表示設定</h3>
+                    <div class="settings-row-top" style="margin-bottom: 15px;">
+                        <label>表示モード:</label>
+                        <div class="display-mode-options" style="display: flex; gap: 15px;">
+                            <label><input type="radio" name="display-mode" value="both" checked> 全て</label>
+                            <label><input type="radio" name="display-mode" value="timer"> タイマーのみ</label>
+                            <label><input type="radio" name="display-mode" value="tasks"> タスクのみ</label>
+                        </div>
                     </div>
-                </section>
+                    <!-- Timer Duration Setting -->
+                    <div class="input-group">
+                        <label>タイマー時間 (分):</label>
+                        <input type="number" id="setting-timer-min" value="35" min="1">
+                    </div>
+
+                    <!-- Visibility Settings -->
+                    <div style="margin-top: 15px;">
+                        <label style="display:block; margin-bottom:5px; font-weight:bold;">表示項目:</label>
+                        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+                            <label><input type="checkbox" id="toggle-show-number" checked> 番号</label>
+                            <label><input type="checkbox" id="toggle-show-time" checked> 時間</label>
+                            <label><input type="checkbox" id="toggle-show-memo" checked> メモ欄</label>
+                            <label><input type="checkbox" id="toggle-show-check" checked> チェック欄</label>
+                        </div>
+                    </div>
+                </div>
 
                 <!-- Task Settings -->
                 <section class="settings-section">

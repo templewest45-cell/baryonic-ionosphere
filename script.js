@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- DOM Elements ---
     const appContainer = document.querySelector('.app-container');
-    const taskListElement = document.getElementById('task-list');
+    const taskListElement = document.getElementById('main-task-list');
     const taskTemplate = document.getElementById('task-item-template');
 
     // Timer Elements
@@ -45,6 +45,21 @@ document.addEventListener('DOMContentLoaded', () => {
         renderMainTasks();
         resetTimerSystem();
         setupEventListeners();
+
+        // Init Layout
+        const savedMode = localStorage.getItem('displayMode') || 'both';
+        updateLayout(savedMode);
+
+        // Check initial state
+        checkAllTasksCompleted();
+
+        // Init Visibility
+        const showNumber = localStorage.getItem('showNumber') !== 'false';
+        const showTime = localStorage.getItem('showTime') !== 'false';
+        const showMemo = localStorage.getItem('showMemo') !== 'false';
+        const showCheck = localStorage.getItem('showCheck') !== 'false';
+        updateVisibilityClasses(showNumber, showTime, showMemo, showCheck);
+
         handleResize(); // Initial scale
     }
 
@@ -197,6 +212,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 task.done = e.target.checked;
                 if (e.target.checked) playSound('success');
                 saveTasks();
+                checkAllTasksCompleted();
             });
 
             taskListElement.appendChild(clone);
@@ -209,9 +225,28 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // --- Settings Logic ---
+    // --- Settings UI Elements ---
+    const displayModeRadios = document.getElementsByName('display-mode');
+    const toggleShowNumber = document.getElementById('toggle-show-number');
+    const toggleShowTime = document.getElementById('toggle-show-time');
+    const toggleShowMemo = document.getElementById('toggle-show-memo');
+    const toggleShowCheck = document.getElementById('toggle-show-check');
+
     function openSettings() {
         // Load current state into settings
         resultTimerInput.value = timerDuration;
+
+        // Load Display Mode
+        const currentMode = localStorage.getItem('displayMode') || 'both';
+        for (const radio of displayModeRadios) {
+            radio.checked = (radio.value === currentMode);
+        }
+
+        // Load Visibility Options
+        toggleShowNumber.checked = localStorage.getItem('showNumber') !== 'false';
+        toggleShowTime.checked = localStorage.getItem('showTime') !== 'false';
+        toggleShowMemo.checked = localStorage.getItem('showMemo') !== 'false';
+        toggleShowCheck.checked = localStorage.getItem('showCheck') !== 'false';
 
         // Render tasks in settings
         settingsTaskList.innerHTML = '';
@@ -304,6 +339,29 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function saveSettings() {
+        // Update Display Mode
+        let selectedMode = 'both';
+        for (const radio of displayModeRadios) {
+            if (radio.checked) {
+                selectedMode = radio.value;
+                break;
+            }
+        }
+        localStorage.setItem('displayMode', selectedMode);
+        updateLayout(selectedMode);
+
+        // Update Visibility Settings
+        const showNumber = toggleShowNumber.checked;
+        const showTime = toggleShowTime.checked;
+        const showMemo = toggleShowMemo.checked;
+        const showCheck = toggleShowCheck.checked;
+
+        localStorage.setItem('showNumber', showNumber);
+        localStorage.setItem('showTime', showTime);
+        localStorage.setItem('showMemo', showMemo);
+        localStorage.setItem('showCheck', showCheck);
+        updateVisibilityClasses(showNumber, showTime, showMemo, showCheck);
+
         // Update Timer
         const newDuration = parseInt(resultTimerInput.value);
         if (newDuration > 0 && newDuration !== timerDuration) {
@@ -334,6 +392,64 @@ document.addEventListener('DOMContentLoaded', () => {
         saveTasks();
         renderMainTasks();
         settingsModal.close();
+    }
+
+    function toggleTask(id) {
+        const task = tasks.find(t => t.id === id);
+        if (task) {
+            task.done = !task.done;
+            saveTasks();
+            renderMainTasks();
+            checkAllTasksCompleted();
+        }
+    }
+
+    // --- Task Completion System ---
+    const taskCompleteOverlay = document.getElementById('task-complete-overlay');
+    const taskResetBtn = document.getElementById('task-reset-btn');
+
+    taskResetBtn.addEventListener('click', () => {
+        resetAllTasks();
+    });
+
+    function checkAllTasksCompleted() {
+        if (tasks.length === 0) return;
+
+        const allDone = tasks.every(t => t.done);
+        if (allDone) {
+            playSound('completion');
+            taskCompleteOverlay.style.display = 'flex';
+        } else {
+            taskCompleteOverlay.style.display = 'none';
+        }
+    }
+
+    function resetAllTasks() {
+        tasks.forEach(t => t.done = false);
+        saveTasks();
+        renderMainTasks();
+        taskCompleteOverlay.style.display = 'none';
+    }
+
+    // --- Layout Management ---
+    function updateLayout(mode) {
+        // mode: 'both', 'timer', 'tasks'
+        appContainer.classList.remove('mode-both', 'mode-timer', 'mode-tasks');
+        appContainer.classList.add(`mode-${mode}`);
+    }
+
+    function updateVisibilityClasses(showNumber, showTime, showMemo, showCheck) {
+        if (!showNumber) appContainer.classList.add('hide-numbers');
+        else appContainer.classList.remove('hide-numbers');
+
+        if (!showTime) appContainer.classList.add('hide-times');
+        else appContainer.classList.remove('hide-times');
+
+        if (!showMemo) appContainer.classList.add('hide-memo');
+        else appContainer.classList.remove('hide-memo');
+
+        if (!showCheck) appContainer.classList.add('hide-checks');
+        else appContainer.classList.remove('hide-checks');
     }
 
     // --- Timer System ---
@@ -426,9 +542,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Helpers ---
     function playSound(type) {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const now = ctx.currentTime;
+
         if (type === 'alarm') {
-            // Simple Bell Sound using Oscillator
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            // Alarm / Time Up
             const osc = ctx.createOscillator();
             const gain = ctx.createGain();
 
@@ -436,16 +554,34 @@ document.addEventListener('DOMContentLoaded', () => {
             gain.connect(ctx.destination);
 
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
-            osc.frequency.exponentialRampToValueAtTime(1046.5, ctx.currentTime + 0.1); // Octave up chirp
+            osc.frequency.setValueAtTime(523.25, now); // C5
+            osc.frequency.exponentialRampToValueAtTime(1046.5, now + 0.1);
 
-            gain.gain.setValueAtTime(0.5, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 1.5);
+            gain.gain.setValueAtTime(0.5, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 1.5);
 
             osc.start();
-            osc.stop(ctx.currentTime + 1.5);
-        } else {
-            // Keep success click silent or small beep if needed, skipping for now
+            osc.stop(now + 1.5);
+        } else if (type === 'completion') {
+            // Victory / Completion Sound (Major Triad)
+            const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+            notes.forEach((freq, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, now + (i * 0.1)); // Staggered start
+
+                gain.gain.setValueAtTime(0, now + (i * 0.1));
+                gain.gain.linearRampToValueAtTime(0.3, now + (i * 0.1) + 0.1);
+                gain.gain.exponentialRampToValueAtTime(0.01, now + (i * 0.1) + 2.0);
+
+                osc.start(now + (i * 0.1));
+                osc.stop(now + (i * 0.1) + 2.0);
+            });
         }
     }
 
